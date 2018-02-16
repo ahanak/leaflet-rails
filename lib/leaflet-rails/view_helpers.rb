@@ -9,6 +9,7 @@ module Leaflet
       options[:max_zoom] ||= Leaflet.max_zoom
       options[:subdomains] ||= Leaflet.subdomains
       options[:container_id] ||= 'map'
+      options[:map_var_name] ||= 'map'
 
       tile_layer = options.delete(:tile_layer) || Leaflet.tile_layer
       attribution = options.delete(:attribution) || Leaflet.attribution
@@ -22,14 +23,15 @@ module Leaflet
       geojsons = options.delete(:geojsons)
       fitbounds = options.delete(:fitbounds)
       subdomains = options.delete(:subdomains)
+      map_var_name = options.delete(:map_var_name)
 
       output = []
       output << "<div id='#{container_id}'></div>" unless no_container
       output << "<script>"
-      output << "var map = L.map('#{container_id}', {#{options.map{|k,v| "#{k}: #{v}"}.join(', ')}});"
+      output << "var #{map_var_name} = L.map('#{container_id}', {#{options.map{|k,v| "#{k}: #{v}"}.join(', ')}});"
 
       if center
-        output << "map.setView([#{center[:latlng][0]}, #{center[:latlng][1]}], #{center[:zoom]});"
+        output << "#{map_var_name}.setView([#{center[:latlng][0]}, #{center[:latlng][1]}], #{center[:zoom]});"
       end
 
       if markers
@@ -37,9 +39,9 @@ module Leaflet
           if marker[:icon]
             icon_settings = prep_icon_settings(marker[:icon])
             output << "var #{icon_settings[:name]}#{index} = L.icon({iconUrl: '#{icon_settings[:icon_url]}', shadowUrl: '#{icon_settings[:shadow_url]}', iconSize: #{icon_settings[:icon_size]}, shadowSize: #{icon_settings[:shadow_size]}, iconAnchor: #{icon_settings[:icon_anchor]}, shadowAnchor: #{icon_settings[:shadow_anchor]}, popupAnchor: #{icon_settings[:popup_anchor]}});"
-            output << "marker = L.marker([#{marker[:latlng][0]}, #{marker[:latlng][1]}], {icon: #{icon_settings[:name]}#{index}}).addTo(map);"
+            output << "marker = L.marker([#{marker[:latlng][0]}, #{marker[:latlng][1]}], {icon: #{icon_settings[:name]}#{index}}).addTo(#{map_var_name});"
           else
-            output << "marker = L.marker([#{marker[:latlng][0]}, #{marker[:latlng][1]}]).addTo(map);"
+            output << "marker = L.marker([#{marker[:latlng][0]}, #{marker[:latlng][1]}]).addTo(#{map_var_name});"
           end
           if marker[:popup]
             output << "marker.bindPopup('#{escape_javascript marker[:popup]}');"
@@ -53,7 +55,7 @@ module Leaflet
            color: '#{circle[:color]}',
            fillColor: '#{circle[:fillColor]}',
            fillOpacity: #{circle[:fillOpacity]}
-        }).addTo(map);"
+        }).addTo(#{map_var_name});"
         end
       end
 
@@ -61,7 +63,7 @@ module Leaflet
         polylines.each do |polyline|
           _output = "L.polyline(#{polyline[:latlngs]}"
           _output << "," + polyline[:options].to_json if polyline[:options]
-          _output << ").addTo(map);"
+          _output << ").addTo(#{map_var_name});"
           output << _output.gsub(/\n/,'')
         end
       end
@@ -77,13 +79,13 @@ module Leaflet
             end
             _output << "," + options.to_json.gsub('":onEachFeature"', on_each_feature)
           end
-          _output << ").addTo(map);"
+          _output << ").addTo(#{map_var_name});"
           output << _output.gsub(/\n/,'')
         end
       end
 
       if fitbounds
-        output << "map.fitBounds(L.latLngBounds(#{fitbounds}));"
+        output << "#{map_var_name}.fitBounds(L.latLngBounds(#{fitbounds}));"
       end
 
       output << "L.tileLayer('#{tile_layer}', {
@@ -97,7 +99,7 @@ module Leaflet
       options.each do |key, value|
         output << "#{key.to_s.camelize(:lower)}: '#{value}',"
       end
-      output << "}).addTo(map);"
+      output << "}).addTo(#{map_var_name});"
 
       output << "</script>"
       output.join("\n").html_safe
